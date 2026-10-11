@@ -20,6 +20,8 @@ require_once __DIR__ . '/../src/Middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../src/Middleware/WorkspaceMiddleware.php';
 require_once __DIR__ . '/../src/Controllers/AuthController.php';
 require_once __DIR__ . '/../src/Controllers/WorkspaceController.php';
+require_once __DIR__ . '/../src/Controllers/SocialAccountController.php';
+require_once __DIR__ . '/../src/Controllers/DashboardController.php';
 
 Config::load(__DIR__ . '/../.env');
 
@@ -93,6 +95,38 @@ $router->get('/api/workspaces/current', [WorkspaceController::class, 'current'],
     [WorkspaceMiddleware::class, 'handle']
 ]);
 $router->put('/api/workspaces/current', [WorkspaceController::class, 'update'], [
+    [AuthMiddleware::class, 'handle'],
+    [WorkspaceMiddleware::class, 'handle']
+]);
+
+// 4. Social Accounts Routes
+$router->get('/api/accounts', [SocialAccountController::class, 'index'], [
+    [AuthMiddleware::class, 'handle'],
+    [WorkspaceMiddleware::class, 'handle']
+]);
+$router->get('/api/accounts/oauth/url', [SocialAccountController::class, 'getOAuthUrl'], [
+    [AuthMiddleware::class, 'handle'],
+    [WorkspaceMiddleware::class, 'handle']
+]);
+$router->post('/api/accounts/oauth/callback', [SocialAccountController::class, 'handleOAuthCallback'], [
+    [AuthMiddleware::class, 'handle'],
+    [WorkspaceMiddleware::class, 'handle']
+]);
+$router->post('/api/accounts/sandbox/connect', [SocialAccountController::class, 'connectSandbox'], [
+    [AuthMiddleware::class, 'handle'],
+    [WorkspaceMiddleware::class, 'handle']
+]);
+$router->post('/api/accounts/{id}/disconnect', [SocialAccountController::class, 'disconnect'], [
+    [AuthMiddleware::class, 'handle'],
+    [WorkspaceMiddleware::class, 'handle']
+]);
+
+// 5. Dashboard Routes
+$router->get('/api/dashboard/stats', [DashboardController::class, 'stats'], [
+    [AuthMiddleware::class, 'handle'],
+    [WorkspaceMiddleware::class, 'handle']
+]);
+$router->get('/api/dashboard/activity', [DashboardController::class, 'activity'], [
     [AuthMiddleware::class, 'handle'],
     [WorkspaceMiddleware::class, 'handle']
 ]);
