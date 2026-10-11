@@ -1,0 +1,9 @@
+# Prevent direct execution of any script files in uploads directory
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .php8 .phps .cgi .pl .asp .aspx .jsp .sh .py
+SetHandler default-handler
+
+<FilesMatch "\.(php|phtml|php3|php4|php5|php7|php8|phps|cgi|pl|asp|aspx|jsp|sh|py|exe|bat|cmd)$">
+    Require all denied
+</FilesMatch>
+
+Options -ExecCGI -Indexes
