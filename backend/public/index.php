@@ -22,6 +22,8 @@ require_once __DIR__ . '/../src/Controllers/AuthController.php';
 require_once __DIR__ . '/../src/Controllers/WorkspaceController.php';
 require_once __DIR__ . '/../src/Controllers/SocialAccountController.php';
 require_once __DIR__ . '/../src/Controllers/DashboardController.php';
+require_once __DIR__ . '/../src/Controllers/MediaController.php';
+require_once __DIR__ . '/../src/Controllers/PostController.php';
 
 Config::load(__DIR__ . '/../.env');
 
@@ -127,6 +129,42 @@ $router->get('/api/dashboard/stats', [DashboardController::class, 'stats'], [
     [WorkspaceMiddleware::class, 'handle']
 ]);
 $router->get('/api/dashboard/activity', [DashboardController::class, 'activity'], [
+    [AuthMiddleware::class, 'handle'],
+    [WorkspaceMiddleware::class, 'handle']
+]);
+
+// 6. Media Routes
+$router->post('/api/media/upload', [MediaController::class, 'upload'], [
+    [AuthMiddleware::class, 'handle'],
+    [WorkspaceMiddleware::class, 'handle']
+]);
+$router->get('/api/media/file/{filename}', [MediaController::class, 'file'], [
+    [AuthMiddleware::class, 'handle'],
+    [WorkspaceMiddleware::class, 'handle']
+]);
+
+// 7. Post & Composer Routes
+$router->get('/api/posts', [PostController::class, 'index'], [
+    [AuthMiddleware::class, 'handle'],
+    [WorkspaceMiddleware::class, 'handle']
+]);
+$router->post('/api/posts', [PostController::class, 'create'], [
+    [AuthMiddleware::class, 'handle'],
+    [WorkspaceMiddleware::class, 'handle']
+]);
+$router->get('/api/posts/{id}', [PostController::class, 'show'], [
+    [AuthMiddleware::class, 'handle'],
+    [WorkspaceMiddleware::class, 'handle']
+]);
+$router->put('/api/posts/{id}', [PostController::class, 'update'], [
+    [AuthMiddleware::class, 'handle'],
+    [WorkspaceMiddleware::class, 'handle']
+]);
+$router->delete('/api/posts/{id}', [PostController::class, 'delete'], [
+    [AuthMiddleware::class, 'handle'],
+    [WorkspaceMiddleware::class, 'handle']
+]);
+$router->post('/api/posts/{id}/publish', [PostController::class, 'publish'], [
     [AuthMiddleware::class, 'handle'],
     [WorkspaceMiddleware::class, 'handle']
 ]);

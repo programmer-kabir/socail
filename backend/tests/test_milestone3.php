@@ -168,8 +168,8 @@ assertTest("Tokens are encrypted in database", !empty($tokenRow['access_token_en
 $decryptedAccess = EncryptionService::decrypt($tokenRow['access_token_encrypted']);
 assertTest("Tokens decrypt accurately with valid master key", str_starts_with($decryptedAccess, 'sandbox_token_'));
 
-// Tampering detection test
-$tamperedToken = substr_replace($tokenRow['access_token_encrypted'], 'Z', 15, 1);
+$origChar = $tokenRow['access_token_encrypted'][15] ?? 'A';
+$tamperedToken = substr_replace($tokenRow['access_token_encrypted'], $origChar === 'Z' ? 'A' : 'Z', 15, 1);
 $caughtTamper = false;
 try {
     EncryptionService::decrypt($tamperedToken);

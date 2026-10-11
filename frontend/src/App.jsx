@@ -7,6 +7,8 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import AccountsPage from './pages/AccountsPage';
+import ComposerPage from './pages/ComposerPage';
+import PostsPage from './pages/PostsPage';
 import WorkspaceSettingsPage from './pages/WorkspaceSettingsPage';
 import { 
   Building2, 
@@ -22,6 +24,7 @@ function MainApp() {
   const [authView, setAuthView] = useState('login'); // 'login' | 'register' | 'forgot-password' | 'reset-password'
   const [resetData, setResetData] = useState({ email: '', token: '' });
   const [currentTab, setCurrentTab] = useState('dashboard'); // 'dashboard' | 'accounts' | 'composer' | 'calendar' | 'posts' | 'settings'
+  const [editingPost, setEditingPost] = useState(null);
 
   if (loading) {
     return (
@@ -67,22 +70,37 @@ function MainApp() {
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         {currentTab === 'dashboard' && <DashboardPage onNavigateTab={setCurrentTab} />}
         {currentTab === 'accounts' && <AccountsPage onNavigateTab={setCurrentTab} />}
+        {currentTab === 'composer' && (
+          <ComposerPage 
+            initialPost={editingPost} 
+            onNavigateTab={setCurrentTab} 
+          />
+        )}
+        {currentTab === 'posts' && (
+          <PostsPage 
+            onNavigateTab={setCurrentTab} 
+            onEditPost={(p) => {
+              setEditingPost(p);
+              setCurrentTab('composer');
+            }} 
+          />
+        )}
         {currentTab === 'settings' && <WorkspaceSettingsPage />}
-        {currentTab !== 'dashboard' && currentTab !== 'accounts' && currentTab !== 'settings' && (
+        {currentTab !== 'dashboard' && currentTab !== 'accounts' && currentTab !== 'composer' && currentTab !== 'posts' && currentTab !== 'settings' && (
           <div className="p-12 rounded-2xl bg-slate-900 border border-slate-800 text-center space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-brand-500/10 border border-brand-500/20 text-brand-400 flex items-center justify-center mx-auto">
               <Share2 className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-bold text-white capitalize">{currentTab}</h3>
             <p className="text-xs text-slate-400 max-w-md mx-auto">
-              This module will be connected in subsequent milestones. Complete authentication, multi-tenancy, connected social accounts, and dynamic dashboard metrics are fully functional.
+              This module will be connected in subsequent milestones. Complete multi-platform post composing, drafts, media uploads, and platform previews are fully functional.
             </p>
           </div>
         )}
       </main>
 
       <footer className="border-t border-slate-800 bg-slate-900/40 py-6 text-center text-xs text-slate-500">
-        SocialFlow SaaS — Milestone 3: Dynamic Dashboard & Social Accounts Integration Active.
+        SocialFlow SaaS — Milestone 4: Multi-Platform Post Composer, Media Uploads & Previews Active.
       </footer>
     </div>
   );
