@@ -5,6 +5,19 @@ declare(strict_types=1);
  * SocialFlow - Standardized REST API JSON Response Utility
  */
 
+class ResponseException extends Exception
+{
+    public int $statusCode;
+    public string $responseBody;
+
+    public function __construct(string $responseBody, int $statusCode)
+    {
+        parent::__construct($responseBody);
+        $this->responseBody = $responseBody;
+        $this->statusCode = $statusCode;
+    }
+}
+
 class Response
 {
     public static function json(
@@ -13,20 +26,28 @@ class Response
         string $message = '',
         array $headers = []
     ): void {
-        http_response_code($statusCode);
-        header('Content-Type: application/json; charset=utf-8');
+        if (!headers_sent()) {
+            http_response_code($statusCode);
+            header('Content-Type: application/json; charset=utf-8');
 
-        foreach ($headers as $name => $value) {
-            header("{$name}: {$value}");
+            foreach ($headers as $name => $value) {
+                header("{$name}: {$value}");
+            }
         }
 
-        echo json_encode([
+        $payload = json_encode([
             'success' => $statusCode >= 200 && $statusCode < 300,
             'message' => $message,
             'data'    => $data,
             'errors'  => null,
             'timestamp' => gmdate('Y-m-d\TH:i:s\Z'),
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        if (defined('TEST_MODE')) {
+            throw new ResponseException($payload, $statusCode);
+        }
+
+        echo $payload;
         exit;
     }
 
@@ -36,20 +57,28 @@ class Response
         mixed $errors = null,
         array $headers = []
     ): void {
-        http_response_code($statusCode);
-        header('Content-Type: application/json; charset=utf-8');
+        if (!headers_sent()) {
+            http_response_code($statusCode);
+            header('Content-Type: application/json; charset=utf-8');
 
-        foreach ($headers as $name => $value) {
-            header("{$name}: {$value}");
+            foreach ($headers as $name => $value) {
+                header("{$name}: {$value}");
+            }
         }
 
-        echo json_encode([
+        $payload = json_encode([
             'success' => false,
             'message' => $message,
             'data'    => null,
             'errors'  => $errors,
             'timestamp' => gmdate('Y-m-d\TH:i:s\Z'),
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        if (defined('TEST_MODE')) {
+            throw new ResponseException($payload, $statusCode);
+        }
+
+        echo $payload;
         exit;
     }
 }

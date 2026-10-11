@@ -5,7 +5,7 @@ declare(strict_types=1);
  * SocialFlow - Public API Gateway & Router Entrypoint
  */
 
-// Global Error / Exception handling
+// Error handling configuration
 error_reporting(E_ALL);
 ini_set('display_errors', '0');
 
@@ -14,6 +14,12 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../src/Utils/Response.php';
 require_once __DIR__ . '/../src/Utils/Router.php';
 require_once __DIR__ . '/../src/Services/EncryptionService.php';
+require_once __DIR__ . '/../src/Services/AuthService.php';
+require_once __DIR__ . '/../src/Services/RateLimiter.php';
+require_once __DIR__ . '/../src/Middleware/AuthMiddleware.php';
+require_once __DIR__ . '/../src/Middleware/WorkspaceMiddleware.php';
+require_once __DIR__ . '/../src/Controllers/AuthController.php';
+require_once __DIR__ . '/../src/Controllers/WorkspaceController.php';
 
 Config::load(__DIR__ . '/../.env');
 
@@ -41,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 $router = new Router();
 
-// Health Check Endpoint
+// 1. Health Check
 $router->get('/api/health', function (array $request) {
     $dbStatus = 'disconnected';
     $dbVersion = null;
@@ -71,5 +77,25 @@ $router->get('/api/health', function (array $request) {
     ], 200, 'SocialFlow REST API is operational.');
 });
 
-// Run Router
+// 2. Authentication Routes
+$router->post('/api/auth/register', [AuthController::class, 'register']);
+$router->post('/api/auth/login', [AuthController::class, 'login']);
+$router->post('/api/auth/logout', [AuthController::class, 'logout'], [[AuthMiddleware::class, 'handle']]);
+$router->get('/api/auth/me', [AuthController::class, 'me'], [[AuthMiddleware::class, 'handle']]);
+$router->post('/api/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+$router->post('/api/auth/reset-password', [AuthController::class, 'resetPassword']);
+
+// 3. Workspace Routes
+$router->get('/api/workspaces', [WorkspaceController::class, 'index'], [[AuthMiddleware::class, 'handle']]);
+$router->post('/api/workspaces', [WorkspaceController::class, 'create'], [[AuthMiddleware::class, 'handle']]);
+$router->get('/api/workspaces/current', [WorkspaceController::class, 'current'], [
+    [AuthMiddleware::class, 'handle'],
+    [WorkspaceMiddleware::class, 'handle']
+]);
+$router->put('/api/workspaces/current', [WorkspaceController::class, 'update'], [
+    [AuthMiddleware::class, 'handle'],
+    [WorkspaceMiddleware::class, 'handle']
+]);
+
+// Dispatch incoming request
 $router->dispatch();
