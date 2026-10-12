@@ -3,7 +3,6 @@ import { useAuth } from '../context/AuthContext';
 import { apiRequest } from '../api/client';
 import { 
   Building2, 
-  Clock, 
   Users, 
   ShieldCheck, 
   Shield, 
@@ -25,14 +24,6 @@ export default function WorkspaceSettingsPage() {
 
   const isAuthorizedToEdit = activeWorkspace?.role === 'owner' || activeWorkspace?.role === 'admin';
 
-  useEffect(() => {
-    if (activeWorkspace) {
-      setName(activeWorkspace.name);
-      setTimezone(activeWorkspace.timezone || 'UTC');
-      fetchMembers();
-    }
-  }, [activeWorkspace]);
-
   const fetchMembers = async () => {
     setLoadingMembers(true);
     try {
@@ -46,6 +37,14 @@ export default function WorkspaceSettingsPage() {
       setLoadingMembers(false);
     }
   };
+
+  useEffect(() => {
+    if (activeWorkspace) {
+      setName(activeWorkspace.name);
+      setTimezone(activeWorkspace.timezone || 'UTC');
+      fetchMembers();
+    }
+  }, [activeWorkspace]);
 
   const handleSaveSettings = async (e) => {
     e.preventDefault();

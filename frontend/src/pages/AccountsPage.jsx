@@ -3,7 +3,6 @@ import { apiRequest } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { 
   Share2, 
-  Plus, 
   Trash2, 
   CheckCircle2, 
   AlertCircle, 
@@ -49,7 +48,7 @@ const PLATFORM_CONFIG = {
   },
 };
 
-export default function AccountsPage({ onNavigateTab }) {
+export default function AccountsPage() {
   const { activeWorkspace } = useAuth();
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,12 +56,6 @@ export default function AccountsPage({ onNavigateTab }) {
   const [successMsg, setSuccessMsg] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [liveModalPlatform, setLiveModalPlatform] = useState(null);
-
-  useEffect(() => {
-    if (activeWorkspace) {
-      fetchAccounts();
-    }
-  }, [activeWorkspace]);
 
   const fetchAccounts = async () => {
     setLoading(true);
@@ -77,6 +70,12 @@ export default function AccountsPage({ onNavigateTab }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (activeWorkspace) {
+      fetchAccounts();
+    }
+  }, [activeWorkspace]);
 
   const handleConnectSandbox = async (platform) => {
     setActionLoading(true);

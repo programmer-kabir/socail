@@ -24,6 +24,7 @@ require_once __DIR__ . '/../src/Controllers/SocialAccountController.php';
 require_once __DIR__ . '/../src/Controllers/DashboardController.php';
 require_once __DIR__ . '/../src/Controllers/MediaController.php';
 require_once __DIR__ . '/../src/Controllers/PostController.php';
+require_once __DIR__ . '/../src/Controllers/CalendarController.php';
 
 Config::load(__DIR__ . '/../.env');
 
@@ -165,6 +166,16 @@ $router->delete('/api/posts/{id}', [PostController::class, 'delete'], [
     [WorkspaceMiddleware::class, 'handle']
 ]);
 $router->post('/api/posts/{id}/publish', [PostController::class, 'publish'], [
+    [AuthMiddleware::class, 'handle'],
+    [WorkspaceMiddleware::class, 'handle']
+]);
+$router->post('/api/posts/{id}/cancel-schedule', [PostController::class, 'cancelSchedule'], [
+    [AuthMiddleware::class, 'handle'],
+    [WorkspaceMiddleware::class, 'handle']
+]);
+
+// 8. Calendar Routes
+$router->get('/api/calendar', [CalendarController::class, 'index'], [
     [AuthMiddleware::class, 'handle'],
     [WorkspaceMiddleware::class, 'handle']
 ]);

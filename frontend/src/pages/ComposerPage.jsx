@@ -11,13 +11,10 @@ import {
   AlertCircle, 
   Sparkles, 
   Loader2, 
-  Layers, 
   Eye, 
   Clock, 
   ExternalLink, 
-  ChevronRight, 
   X,
-  Share2,
   RefreshCw,
   FolderOpen
 } from 'lucide-react';
@@ -55,7 +52,22 @@ export default function ComposerPage({ initialPost = null, onNavigateTab }) {
 
   // UI tabs & view state
   const [activeTab, setActiveTab] = useState('base'); // 'base' | accountId string
-  const [previewAccountId, setPreviewAccountId] = useState(null);
+  const [userPreviewAccountId, setUserPreviewAccountId] = useState(null);
+  const previewAccountId = (userPreviewAccountId && selectedAccountIds.includes(userPreviewAccountId))
+    ? userPreviewAccountId
+    : (selectedAccountIds[0] || null);
+  const setPreviewAccountId = setUserPreviewAccountId;
+
+  const [minScheduleTime, setMinScheduleTime] = useState(() => new Date().toISOString().slice(0, 16));
+
+  useEffect(() => {
+    if (!isScheduled) return;
+    const timer = setInterval(() => {
+      setMinScheduleTime(new Date().toISOString().slice(0, 16));
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [isScheduled]);
+
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null); // { type: 'success' | 'error', message: string, details?: any }
   const [publishResult, setPublishResult] = useState(null); // Publishing response breakdown
@@ -64,40 +76,6 @@ export default function ComposerPage({ initialPost = null, onNavigateTab }) {
   const [showDraftsModal, setShowDraftsModal] = useState(false);
   const [draftsList, setDraftsList] = useState([]);
   const [loadingDrafts, setLoadingDrafts] = useState(false);
-
-  // Fetch accounts on workspace change
-  useEffect(() => {
-    loadAccounts();
-  }, [activeWorkspace?.id]);
-
-  // Set initial preview account when accounts or selection changes
-  useEffect(() => {
-    if (selectedAccountIds.length > 0) {
-      if (!previewAccountId || !selectedAccountIds.includes(previewAccountId)) {
-        setPreviewAccountId(selectedAccountIds[0]);
-      }
-    } else {
-      setPreviewAccountId(null);
-    }
-  }, [selectedAccountIds]);
-
-  const loadAccounts = async () => {
-    setLoadingAccounts(true);
-    try {
-      const res = await apiRequest('/api/social-accounts');
-      if (res.success && Array.isArray(res.data)) {
-        setAccounts(res.data);
-        // Default to selecting all connected accounts if creating new post and none selected
-        if (!postId && !selectedAccountIds.length && res.data.length > 0) {
-          setSelectedAccountIds([res.data[0].id]);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load accounts:', err);
-    } finally {
-      setLoadingAccounts(false);
-    }
-  };
 
   const loadDrafts = async () => {
     setLoadingDrafts(true);
@@ -110,6 +88,89 @@ export default function ComposerPage({ initialPost = null, onNavigateTab }) {
       console.error('Failed to load drafts:', err);
     } finally {
       setLoadingDrafts(false);
+    }
+  };
+
+  // Fetch accounts on workspace change
+  useEffect(() => {
+    let ignore = false;
+    const fetchAccounts = async () => {
+      try {
+        const res = await apiRequest('/api/accounts');
+        if (!ignore && res.success && Array.isArray(res.data)) {
+          setAccounts(res.data);
+          // Default to selecting all connected accounts if creating new post and none selected
+          if (!postId && !selectedAccountIds.length && res.data.length > 0) {
+            setSelectedAccountIds([res.data[0].id]);
+          }
+        }
+      } catch (err) {
+        if (!ignore) {
+          console.error('Failed to load accounts:', err);
+        }
+      } finally {
+        if (!ignore) {
+          setLoadingAccounts(false);
+        }
+      }
+    };
+
+    fetchAccounts();
+    return () => {
+      ignore = true;
+    };
+  }, [activeWorkspace?.id, postId, selectedAccountIds.length]);
+
+  // Update state whenever initialPost changes
+  useEffect(() => {
+    if (initialPost) {
+      setPostId(initialPost.id);
+      setBaseCaption(initialPost.caption || '');
+      setMedia(initialPost.media || []);
+      setIsScheduled(!!initialPost.scheduled_at);
+      setScheduledAt(
+        initialPost.scheduled_at 
+          ? new Date(initialPost.scheduled_at).toISOString().slice(0, 16) 
+          : ''
+      );
+      const targetIds = (initialPost.targets || []).map(t => t.social_account_id);
+      setSelectedAccountIds(targetIds);
+      const customCaps = {};
+      (initialPost.targets || []).forEach(t => {
+        if (t.custom_caption) {
+          customCaps[t.social_account_id] = t.custom_caption;
+        }
+      });
+      setCustomCaptions(customCaps);
+    }
+  }, [initialPost]);
+
+
+
+  const handleCancelSchedule = async () => {
+    if (!postId) return;
+    setSubmitting(true);
+    setFeedback(null);
+    try {
+      const res = await apiRequest(`/api/posts/${postId}/cancel-schedule`, {
+        method: 'POST'
+      });
+      if (!res.success) {
+        throw new Error(res.message || 'Failed to cancel schedule.');
+      }
+      setIsScheduled(false);
+      setScheduledAt('');
+      setFeedback({
+        type: 'success',
+        message: `Schedule cancelled for post #${postId}. It is now saved as a draft.`,
+      });
+    } catch (err) {
+      setFeedback({
+        type: 'error',
+        message: err.message || 'Failed to cancel schedule.',
+      });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -278,6 +339,17 @@ export default function ComposerPage({ initialPost = null, onNavigateTab }) {
         </div>
 
         <div className="flex items-center gap-2">
+          {onNavigateTab && (
+            <button
+              type="button"
+              onClick={() => onNavigateTab('calendar')}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300 transition"
+            >
+              <Calendar className="w-3.5 h-3.5 text-brand-400" />
+              <span>Calendar</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => {
@@ -626,16 +698,36 @@ export default function ComposerPage({ initialPost = null, onNavigateTab }) {
             </div>
 
             {isScheduled && (
-              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-                <label className="text-xs text-slate-400 block">
-                  Select publish date & time ({activeWorkspace?.timezone || 'UTC'})
-                </label>
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <label className="text-xs font-semibold text-slate-300">
+                    Select Publish Date & Time
+                  </label>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-brand-500/10 border border-brand-500/20 text-brand-400 font-mono">
+                    Timezone: {activeWorkspace?.timezone || 'UTC'}
+                  </span>
+                </div>
                 <input
                   type="datetime-local"
+                  min={minScheduleTime}
+                  onFocus={() => setMinScheduleTime(new Date().toISOString().slice(0, 16))}
                   value={scheduledAt}
                   onChange={(e) => setScheduledAt(e.target.value)}
                   className="w-full sm:w-auto rounded-xl bg-slate-900 border border-slate-700 px-3.5 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
+                {postId && (
+                  <div className="pt-2 flex items-center justify-between text-xs border-t border-slate-800">
+                    <span className="text-slate-400">Post #{postId} has a schedule</span>
+                    <button
+                      type="button"
+                      disabled={submitting}
+                      onClick={handleCancelSchedule}
+                      className="px-2.5 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 font-semibold transition"
+                    >
+                      Cancel Schedule (Revert to Draft)
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

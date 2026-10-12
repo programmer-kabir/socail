@@ -7,9 +7,7 @@ import {
   Building2, 
   Check, 
   LogOut, 
-  User, 
   Settings, 
-  ShieldCheck,
   X,
   Loader2
 } from 'lucide-react';

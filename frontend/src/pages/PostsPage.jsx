@@ -12,9 +12,7 @@ import {
   AlertCircle, 
   CheckCircle2, 
   Loader2, 
-  Sparkles, 
-  RefreshCw, 
-  Filter 
+  RefreshCw 
 } from 'lucide-react';
 
 const PLATFORM_ICONS = {
@@ -33,10 +31,6 @@ export default function PostsPage({ onNavigateTab, onEditPost }) {
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [feedback, setFeedback] = useState(null);
 
-  useEffect(() => {
-    loadPosts();
-  }, [activeWorkspace?.id, statusFilter]);
-
   const loadPosts = async () => {
     setLoading(true);
     try {
@@ -51,6 +45,32 @@ export default function PostsPage({ onNavigateTab, onEditPost }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    let ignore = false;
+    const fetchPosts = async () => {
+      try {
+        const query = statusFilter ? `?status=${statusFilter}` : '';
+        const res = await apiRequest(`/api/posts${query}`);
+        if (!ignore && res.success && res.data?.posts) {
+          setPosts(res.data.posts);
+        }
+      } catch (err) {
+        if (!ignore) {
+          console.error('Failed to load posts:', err);
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchPosts();
+    return () => {
+      ignore = true;
+    };
+  }, [activeWorkspace?.id, statusFilter]);
 
   const handleDelete = async (postId) => {
     if (!window.confirm(`Are you sure you want to delete post #${postId}?`)) {

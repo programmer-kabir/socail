@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { 
-  Building2, 
   Share2, 
   Calendar, 
   Clock, 
@@ -14,8 +13,7 @@ import {
   Sparkles, 
   ArrowRight, 
   RefreshCw,
-  Loader2,
-  ExternalLink
+  Loader2
 } from 'lucide-react';
 
 export default function DashboardPage({ onNavigateTab }) {
@@ -24,12 +22,6 @@ export default function DashboardPage({ onNavigateTab }) {
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (activeWorkspace) {
-      loadDashboardData();
-    }
-  }, [activeWorkspace]);
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -48,6 +40,12 @@ export default function DashboardPage({ onNavigateTab }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (activeWorkspace) {
+      loadDashboardData();
+    }
+  }, [activeWorkspace]);
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">

@@ -4,11 +4,8 @@ import {
   Upload, 
   X, 
   Film, 
-  Image as ImageIcon, 
   AlertCircle, 
-  Loader2, 
-  CheckCircle2, 
-  FileCheck 
+  Loader2 
 } from 'lucide-react';
 
 export default function MediaUploader({ media = [], onMediaChange }) {

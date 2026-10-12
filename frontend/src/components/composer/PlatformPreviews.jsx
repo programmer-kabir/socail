@@ -14,9 +14,7 @@ import {
   Music2, 
   Sparkles, 
   AlertTriangle, 
-  Film, 
-  CheckCircle, 
-  Info 
+  Film 
 } from 'lucide-react';
 
 export default function PlatformPreviews({ 

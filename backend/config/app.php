@@ -5,6 +5,8 @@ declare(strict_types=1);
  * SocialFlow - Application Environment & Configuration Loader
  */
 
+date_default_timezone_set('UTC');
+
 class Config
 {
     private static array $env = [];

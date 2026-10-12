@@ -186,13 +186,22 @@ class PostController
         }
 
         // Determine DB post status
+        $wsTimezone = $request['workspace']['timezone'] ?? 'UTC';
         $dbStatus = 'draft';
+        $schedUtc = null;
         if ($requestedStatus === 'scheduled') {
             if (empty($scheduledAt)) {
                 Response::error('A valid future schedule date and time is required.', 422, [
                     'scheduled_at' => ['Date and time are required for scheduling.']
                 ]);
             }
+            $parsedSched = $this->parseScheduledTime($scheduledAt, $wsTimezone);
+            if (!$parsedSched || $parsedSched['timestamp'] <= time()) {
+                Response::error('Scheduled time must be in the future.', 422, [
+                    'scheduled_at' => ['Scheduled time must be set in the future.']
+                ]);
+            }
+            $schedUtc = $parsedSched['utc'];
             $dbStatus = 'scheduled';
         } elseif ($requestedStatus === 'publish_now') {
             $dbStatus = 'publishing';
@@ -211,7 +220,7 @@ class PostController
                 ':uid'     => $userId,
                 ':caption' => $caption,
                 ':status'  => $dbStatus,
-                ':sched'   => $scheduledAt ? gmdate('Y-m-d H:i:s', strtotime($scheduledAt)) : null,
+                ':sched'   => $schedUtc,
             ]);
             $postId = (int)$pdo->lastInsertId();
 
@@ -248,6 +257,20 @@ class PostController
                     ':aid'     => $accId,
                     ':caption' => $platCaption,
                     ':ikey'    => $idempotencyKey,
+                ]);
+            }
+
+            // If scheduled, queue job into scheduled_jobs
+            if ($dbStatus === 'scheduled' && $schedUtc) {
+                $stmtJob = $pdo->prepare("
+                    INSERT INTO scheduled_jobs (workspace_id, post_id, run_at, status)
+                    VALUES (:wid, :pid, :run_at, 'queued')
+                    ON DUPLICATE KEY UPDATE run_at = VALUES(run_at), status = 'queued', attempts = 0, locked_at = NULL, locked_by = NULL, last_error = NULL
+                ");
+                $stmtJob->execute([
+                    ':wid'    => $workspaceId,
+                    ':pid'    => $postId,
+                    ':run_at' => $schedUtc,
                 ]);
             }
 
@@ -365,7 +388,7 @@ class PostController
         $pdo = Database::getConnection();
 
         $stmtPost = $pdo->prepare("
-            SELECT id, status FROM posts WHERE id = :id AND workspace_id = :wid
+            SELECT id, status, default_caption, scheduled_at FROM posts WHERE id = :id AND workspace_id = :wid
         ");
         $stmtPost->execute([':id' => $postId, ':wid' => $workspaceId]);
         $post = $stmtPost->fetch();
@@ -374,26 +397,122 @@ class PostController
             Response::error('Post not found in this workspace.', 404);
         }
 
-        $caption = trim($body['caption'] ?? '');
-        $scheduledAt = !empty($body['scheduled_at']) ? trim($body['scheduled_at']) : null;
+        $caption = trim($body['caption'] ?? $post['default_caption']);
+        $scheduledAt = isset($body['scheduled_at']) ? trim($body['scheduled_at']) : $post['scheduled_at'];
         $status = strtolower(trim($body['status'] ?? $post['status']));
 
-        $stmtUp = $pdo->prepare("
-            UPDATE posts 
-            SET default_caption = :caption,
-                status = :status,
-                scheduled_at = :sched
-            WHERE id = :id AND workspace_id = :wid
-        ");
-        $stmtUp->execute([
-            ':caption' => $caption,
-            ':status'  => $status,
-            ':sched'   => $scheduledAt ? gmdate('Y-m-d H:i:s', strtotime($scheduledAt)) : null,
-            ':id'      => $postId,
-            ':wid'     => $workspaceId,
-        ]);
+        $wsTimezone = $request['workspace']['timezone'] ?? 'UTC';
+        $schedUtc = null;
+        if ($status === 'scheduled') {
+            if (empty($scheduledAt)) {
+                Response::error('A valid future schedule date and time is required.', 422, [
+                    'scheduled_at' => ['Date and time are required for scheduling.']
+                ]);
+            }
+            $parsedSched = $this->parseScheduledTime($scheduledAt, $wsTimezone);
+            if (!$parsedSched || $parsedSched['timestamp'] <= time()) {
+                Response::error('Scheduled time must be in the future.', 422, [
+                    'scheduled_at' => ['Scheduled time must be set in the future.']
+                ]);
+            }
+            $schedUtc = $parsedSched['utc'];
+        } elseif ($status === 'draft') {
+            $schedUtc = null;
+        } else {
+            $schedUtc = $post['scheduled_at'];
+        }
 
-        Response::json(['id' => $postId, 'status' => $status], 200, 'Post updated successfully.');
+        $pdo->beginTransaction();
+        try {
+
+            $stmtUp = $pdo->prepare("
+                UPDATE posts 
+                SET default_caption = :caption,
+                    status = :status,
+                    scheduled_at = :sched
+                WHERE id = :id AND workspace_id = :wid
+            ");
+            $stmtUp->execute([
+                ':caption' => $caption,
+                ':status'  => $status,
+                ':sched'   => $schedUtc,
+                ':id'      => $postId,
+                ':wid'     => $workspaceId,
+            ]);
+
+            if ($status === 'scheduled' && $schedUtc) {
+                $stmtJob = $pdo->prepare("
+                    INSERT INTO scheduled_jobs (workspace_id, post_id, run_at, status)
+                    VALUES (:wid, :pid, :run_at, 'queued')
+                    ON DUPLICATE KEY UPDATE run_at = VALUES(run_at), status = 'queued', attempts = 0, locked_at = NULL, locked_by = NULL, last_error = NULL
+                ");
+                $stmtJob->execute([
+                    ':wid'    => $workspaceId,
+                    ':pid'    => $postId,
+                    ':run_at' => $schedUtc,
+                ]);
+            } elseif ($status === 'draft') {
+                $stmtDelJob = $pdo->prepare("DELETE FROM scheduled_jobs WHERE post_id = :pid AND workspace_id = :wid");
+                $stmtDelJob->execute([':pid' => $postId, ':wid' => $workspaceId]);
+            }
+
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            Response::error('Failed to update post: ' . $e->getMessage(), 500);
+        }
+
+        Response::json(['id' => $postId, 'status' => $status, 'scheduled_at' => $schedUtc ?? null], 200, 'Post updated successfully.');
+    }
+
+    /**
+     * Cancel a scheduled post and revert it safely to draft without deleting targets or media
+     */
+    public function cancelSchedule(array $request): void
+    {
+        $workspaceId = $request['workspace']['id'];
+        $postId = (int)($request['params']['id'] ?? 0);
+
+        $pdo = Database::getConnection();
+        $stmtPost = $pdo->prepare("SELECT id, status FROM posts WHERE id = :id AND workspace_id = :wid");
+        $stmtPost->execute([':id' => $postId, ':wid' => $workspaceId]);
+        $post = $stmtPost->fetch();
+
+        if (!$post) {
+            Response::error('Post not found in this workspace.', 404);
+        }
+
+        if ($post['status'] !== 'scheduled') {
+            Response::error('Only scheduled posts can have their schedule cancelled.', 422);
+        }
+
+        $pdo->beginTransaction();
+        try {
+            $stmtUp = $pdo->prepare("
+                UPDATE posts 
+                SET status = 'draft', 
+                    scheduled_at = NULL 
+                WHERE id = :id AND workspace_id = :wid
+            ");
+            $stmtUp->execute([':id' => $postId, ':wid' => $workspaceId]);
+
+            $stmtJob = $pdo->prepare("
+                DELETE FROM scheduled_jobs 
+                WHERE post_id = :pid AND workspace_id = :wid
+            ");
+            $stmtJob->execute([':pid' => $postId, ':wid' => $workspaceId]);
+
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            Response::error('Failed to cancel scheduled post: ' . $e->getMessage(), 500);
+        }
+
+        Response::json(['id' => $postId, 'status' => 'draft'], 200, 'Scheduled post reverted to draft.');
     }
 
     /**
@@ -430,5 +549,36 @@ class PostController
         $result = PublishingService::publishPostImmediate($postId, $workspaceId);
 
         Response::json($result, 200, 'Publishing execution completed.');
+    }
+
+    /**
+     * Parse and convert a localized scheduled time to UTC timestamp and formatted UTC string
+     */
+    private function parseScheduledTime(?string $scheduledAt, string $workspaceTimezone): ?array
+    {
+        if (empty($scheduledAt)) {
+            return null;
+        }
+
+        try {
+            $wsTz = new DateTimeZone($workspaceTimezone ?: 'UTC');
+        } catch (Throwable) {
+            $wsTz = new DateTimeZone('UTC');
+        }
+
+        try {
+            if (preg_match('/(Z|[+-]\d{2}:?\d{2})$/i', $scheduledAt)) {
+                $dt = new DateTime($scheduledAt);
+            } else {
+                $dt = new DateTime($scheduledAt, $wsTz);
+            }
+            $dt->setTimezone(new DateTimeZone('UTC'));
+            return [
+                'timestamp' => $dt->getTimestamp(),
+                'utc'       => $dt->format('Y-m-d H:i:s'),
+            ];
+        } catch (Throwable) {
+            return null;
+        }
     }
 }

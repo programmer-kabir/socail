@@ -31,7 +31,7 @@ export function AuthProvider({ children }) {
       } else {
         setUser(null);
       }
-    } catch (err) {
+    } catch {
       setUser(null);
       setActiveWorkspace(null);
       setWorkspaces([]);
@@ -92,7 +92,7 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try {
       await apiRequest('/api/auth/logout', { method: 'POST' });
-    } catch (e) {
+    } catch {
       // Continue cleanup on frontend regardless of server response
     }
     setUser(null);
