@@ -103,6 +103,8 @@ export default function AccountsPage() {
     try {
       const res = await apiRequest(`/api/accounts/oauth/url?platform=${platform}`);
       if (res.success && res.data?.oauth_url) {
+        // Persist platform so OAuthCallbackPage can identify it after the redirect
+        sessionStorage.setItem('oauth_platform', platform);
         window.location.href = res.data.oauth_url;
       }
     } catch (err) {

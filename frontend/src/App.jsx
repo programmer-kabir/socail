@@ -7,6 +7,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import AccountsPage from './pages/AccountsPage';
+import OAuthCallbackPage from './pages/OAuthCallbackPage';
 import ComposerPage from './pages/ComposerPage';
 import CalendarPage from './pages/CalendarPage';
 import PostsPage from './pages/PostsPage';
@@ -89,6 +90,22 @@ function MainApp() {
   }
 
   // Authenticated Workspace Experience
+
+  // Intercept OAuth callback redirect from Facebook (or any platform)
+  // This path is only reachable after a successful login, so CSRF / workspace
+  // headers are already set by AuthContext before this renders.
+  if (window.location.pathname.startsWith('/accounts/callback')) {
+    return (
+      <OAuthCallbackPage
+        onNavigate={(tab) => {
+          // Replace callback URL in history so Back button doesn't re-trigger
+          window.history.replaceState(null, '', `/${tab}`);
+          setCurrentTab(tab);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       <Header currentTab={currentTab} onSelectTab={handleSelectTab} />
