@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { apiRequest, setClientCsrf, setClientWorkspace } from '../api/client';
+import { apiRequest, setClientCsrf, setClientWorkspace, setClientToken } from '../api/client';
 
 const AuthContext = createContext(null);
 
@@ -55,6 +55,9 @@ export function AuthProvider({ children }) {
       setUser(res.data.user);
       setWorkspaces(res.data.workspaces || []);
       setActiveWorkspace(res.data.active_workspace || null);
+      if (res.data.token) {
+        setClientToken(res.data.token);
+      }
       if (res.data.csrf_token) {
         setCsrfToken(res.data.csrf_token);
         setClientCsrf(res.data.csrf_token);
@@ -78,6 +81,9 @@ export function AuthProvider({ children }) {
       const ws = res.data.workspace;
       setWorkspaces(ws ? [ws] : []);
       setActiveWorkspace(ws || null);
+      if (res.data.token) {
+        setClientToken(res.data.token);
+      }
       if (res.data.csrf_token) {
         setCsrfToken(res.data.csrf_token);
         setClientCsrf(res.data.csrf_token);
@@ -101,6 +107,7 @@ export function AuthProvider({ children }) {
     setCsrfToken(null);
     setClientCsrf(null);
     setClientWorkspace(null);
+    setClientToken(null);
   };
 
   const switchWorkspace = async (workspaceId) => {

@@ -101,11 +101,13 @@ export default function AccountsPage() {
     setActionLoading(true);
     setErrorMsg(null);
     try {
-      const res = await apiRequest(`/api/accounts/oauth/url?platform=${platform}`);
-      if (res.success && res.data?.oauth_url) {
+      const redirectUri = encodeURIComponent(`${window.location.origin}/accounts/callback`);
+      const res = await apiRequest(`/api/accounts/oauth/url?platform=${platform}&redirect_uri=${redirectUri}`);
+      const authUrl = res.data?.oauth_url || res.data?.authorization_url;
+      if (res.success && authUrl) {
         // Persist platform so OAuthCallbackPage can identify it after the redirect
         sessionStorage.setItem('oauth_platform', platform);
-        window.location.href = res.data.oauth_url;
+        window.location.href = authUrl;
       }
     } catch (err) {
       // In development when credentials aren't configured in .env, display informative instructions

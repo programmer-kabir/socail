@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { apiRequest } from '../api/client';
+import { apiRequest, getApiUrl } from '../api/client';
 import { 
   FileText, 
   Plus, 
@@ -298,7 +298,7 @@ export default function PostsPage({ onNavigateTab, onEditPost }) {
                       {m.media_type === 'video' ? (
                         <span className="text-[10px] font-mono font-bold text-indigo-400">VIDEO</span>
                       ) : (
-                        <img src={m.preview_url} alt="" className="w-full h-full object-cover" />
+                        <img src={getApiUrl(m.preview_url)} alt="" className="w-full h-full object-cover" />
                       )}
                     </div>
                   ))}

@@ -16,6 +16,7 @@ import {
   AlertTriangle, 
   Film 
 } from 'lucide-react';
+import { getApiUrl } from '../../api/client';
 
 export default function PlatformPreviews({ 
   platform, 
@@ -195,7 +196,7 @@ function FacebookPreview({ accountName, caption, media }) {
             </div>
           ) : (
             <img 
-              src={media[0].preview_url} 
+              src={getApiUrl(media[0].preview_url)} 
               alt="Facebook attachment" 
               className="w-full max-h-96 object-cover" 
             />
@@ -271,7 +272,7 @@ function InstagramPreview({ username, caption, media }) {
             </div>
           ) : (
             <img 
-              src={media[0].preview_url} 
+              src={getApiUrl(media[0].preview_url)} 
               alt="Instagram asset" 
               className="w-full h-full object-cover" 
             />
@@ -355,7 +356,7 @@ function TwitterPreview({ accountName, username, caption, media }) {
             </div>
           ) : (
             <img 
-              src={media[0].preview_url} 
+              src={getApiUrl(media[0].preview_url)} 
               alt="X asset" 
               className="w-full h-full object-cover max-h-72" 
             />

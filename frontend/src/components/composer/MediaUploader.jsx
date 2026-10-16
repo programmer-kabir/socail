@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { apiRequest } from '../../api/client';
+import { apiRequest, getApiUrl } from '../../api/client';
 import { 
   Upload, 
   X, 
@@ -173,7 +173,7 @@ export default function MediaUploader({ media = [], onMediaChange }) {
                   </div>
                 ) : (
                   <img
-                    src={item.preview_url}
+                    src={getApiUrl(item.preview_url)}
                     alt={item.original_filename}
                     className="w-full h-full object-cover"
                   />

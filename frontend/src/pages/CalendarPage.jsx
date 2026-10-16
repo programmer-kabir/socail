@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { apiRequest } from '../api/client';
+import { apiRequest, getApiUrl } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { 
   Calendar as CalendarIcon, 
@@ -735,7 +735,7 @@ export default function CalendarPage({ onNavigateTab, onEditPost }) {
                   {selectedPost.media.map(m => (
                     <div key={m.id} className="aspect-square rounded-xl overflow-hidden bg-slate-950 border border-slate-800">
                       <img 
-                        src={m.preview_url} 
+                        src={getApiUrl(m.preview_url)} 
                         alt={m.original_filename} 
                         className="w-full h-full object-cover" 
                       />

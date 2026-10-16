@@ -1,0 +1,12 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Block access to config, helpers, and .env
+    RewriteRule ^\.env$ - [F,L]
+    RewriteRule ^(config|helpers)/ - [F,L]
+
+    # Map clean URL without .php to matching .php file if it exists
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME}.php -f
+    RewriteRule ^(.*)$ $1.php [L,QSA]
+</IfModule>
